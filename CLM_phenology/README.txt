@@ -1,1 +1,1 @@
-THis project is creating ML-Phenology for CLM
+This project is creating ML-Phenology for CLM
