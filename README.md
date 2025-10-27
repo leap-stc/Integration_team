@@ -1,7 +1,6 @@
 ### Overview
 
-The LEAP–CESM Integration Team supports the development, implementation, and evaluation of machine learning (ML)–based parameterizations within the Community Earth System Model (CESM)
-
+The LEAP–CESM Integration Team supports the development, implementation, and evaluation of machine learning based parameterizations within the Community Earth System Model (CESM)
 
 
 ### Contributing
@@ -11,4 +10,4 @@ You can participate by:
 
 - Opening a GitHub Issue to request integration support or report a problem.
 - Submitting a Pull Request with improved documentation or examples.
-- Completing the Integration Survey
+- Completing the Integration Survey: https://docs.google.com/document/d/1aP1heSy10sWH8cuPvtHFhZO43wc4XWvUyWPKhyYOijM/edit?usp=sharing
