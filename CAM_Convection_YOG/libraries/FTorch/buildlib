@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+import os, sys
+
+_CIMEROOT = os.environ.get("CIMEROOT")
+if _CIMEROOT is None:
+    raise SystemExit("ERROR: must set CIMEROOT environment variable")
+
+_LIBDIR = os.path.join(_CIMEROOT, "CIME", "Tools")
+sys.path.append(_LIBDIR)
+
+from standard_script_setup import *
+from CIME.utils import copyifnewer, run_bld_cmd_ensure_logging, expect
+from CIME.case import Case
+from CIME.build import get_standard_makefile_args
+from CIME.Servers.wget import WGET
+import glob
+import zipfile
+
+logger = logging.getLogger(__name__)
+
+
+def parse_command_line(args, description):
+    ###############################################################################
+    parser = argparse.ArgumentParser(
+        usage="""\n{0} [--debug]
+OR
+{0} --verbose
+OR
+{0} --help
+
+\033[1mEXAMPLES:\033[0m
+    \033[1;32m# Run \033[0m
+    > {0}
+""".format(
+            os.path.basename(args[0])
+        ),
+        description=description,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    CIME.utils.setup_standard_logging_options(parser)
+
+    parser.add_argument("buildroot", help="build path root")
+
+    parser.add_argument("installpath", help="install path ")
+
+    parser.add_argument(
+        "caseroot", nargs="?", default=os.getcwd(), help="Case directory to build"
+    )
+
+    args = CIME.utils.parse_args_and_handle_standard_logging_options(args, parser)
+
+    return args.buildroot, args.installpath, args.caseroot
+
+
+def buildlib(bldroot, installpath, case):
+    ###############################################################################
+    srcroot = case.get_value("SRCROOT")
+    caseroot = case.get_value("CASEROOT")
+    ftorch_dir = os.path.join(srcroot, "libraries", "FTorch")
+    casetools = case.get_value("CASETOOLS")
+
+    # Path to the torch library - usually installed with pyTorch
+    torch_dir = case.get_value("TORCH_DIR")
+    torch_library = os.path.join(torch_dir, "lib", "libtorch_cpu.so")
+    if not os.path.isfile(torch_library):
+        torch_dir =  os.path.join(installpath,"libtorch")
+        torch_library = os.path.join(torch_dir, "lib", "libtorch_cpu.so")
+        if not os.path.isfile(torch_library):
+            logger.info("libtorch not found, will attempt to use the nightly build from pytorch")
+            wget_server = WGET("https://download.pytorch.org")
+            zfile = os.path.join(installpath,"libtorch-shared-with-deps-latest.zip")
+            if not os.path.isfile(zfile):
+                wget_server.getfile("libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip", zfile)
+            with zipfile.ZipFile(zfile, 'r') as zip_ref:
+                zip_ref.extractall(installpath)
+        case.set_value("TORCH_DIR", torch_dir)
+
+    expect(torch_dir,"TORCH_DIR not set in XML.\n")
+    if case.get_value("USE_FTORCH"):
+        use_ftorch = "ON"
+    else:
+        use_ftorch = "OFF"
+
+    cmake_opts = '"-DCMAKE_PREFIX_PATH={} -DTORCH_LIBRARY={} -DUSE_FTORCH={} "'.format(torch_dir, torch_library, use_ftorch)
+
+    gmake_vars = (
+        "CASEROOT={caseroot} COMP_NAME=FTorch "
+        "FTORCH_SRC_DIR={ftorch_dir} "
+        "USER_CMAKE_OPTS={cmake_opts} "
+        "CASETOOLS={casetools} ".format(
+            caseroot=caseroot,
+            ftorch_dir=ftorch_dir,
+            cmake_opts=cmake_opts,
+            casetools=casetools,
+        )
+    )
+    stdargs = get_standard_makefile_args(case, shared_lib=True)
+
+    gmake_opts = (
+        "FTMakefile -C {bldroot} "
+        " {gmake_vars} {stdargs} -f {casetools}/Makefile".format(
+            bldroot=bldroot, gmake_vars=gmake_vars, casetools=casetools, stdargs=stdargs
+        )
+    )
+
+    gmake_cmd = case.get_value("GMAKE")
+
+    # This runs the FTorch cmake command from the cime case Makefile
+    cmd = "{} {}".format(gmake_cmd, gmake_opts)
+    if not os.path.isfile(os.path.join(bldroot,"Makefile")):
+        run_bld_cmd_ensure_logging(cmd, logger, from_dir=bldroot)
+
+    # This runs the pio make command from the cmake generated Makefile
+    run_bld_cmd_ensure_logging(
+        "{} -j {}".format(gmake_cmd, case.get_value("GMAKE_J")),
+        logger,
+        from_dir=bldroot,
+    )
+
+
+
+
+def _main(argv, documentation):
+    bldroot, installpath, caseroot = parse_command_line(argv, documentation)
+    with Case(caseroot) as case:
+        buildlib(bldroot, installpath, case)
+
+
+if __name__ == "__main__":
+    _main(sys.argv, __doc__)

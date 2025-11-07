@@ -1,0 +1,6 @@
+[submodule "ftorch"]
+	path = src
+	url = https://github.com/Cambridge-ICCS/FTorch.git
+fxtag = v1.0.0
+fxrequired = AlwaysRequired
+fxDONOTUSEurl = https://github.com/Cambridge-ICCS/FTorch.git
