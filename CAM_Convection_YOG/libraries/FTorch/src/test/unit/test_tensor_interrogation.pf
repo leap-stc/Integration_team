@@ -1,0 +1,186 @@
+!| Unit tests for FTorch subroutines that interrogate tensors on the CPU.
+!
+!  * License
+!    FTorch is released under an MIT license.
+!    See the [LICENSE](https://github.com/Cambridge-ICCS/FTorch/blob/main/LICENSE)
+!    file for details.
+module test_tensor_interrogation
+  use funit
+  use ftorch, only: torch_kFloat32, torch_kCPU, torch_tensor, torch_tensor_empty
+  use iso_c_binding, only: c_int64_t
+
+  implicit none
+
+  public
+
+  ! Parameters common across all test cases
+  integer, parameter :: device_type = torch_kCPU
+
+contains
+
+  ! Unit test for the torch_tensor_get_rank method of a 1D tensor
+  @test
+  subroutine test_torch_tensor_get_rank_1D()
+
+    implicit none
+
+    type(torch_tensor) :: tensor
+    integer, parameter :: ndims = 1
+    integer(kind=c_int64_t), parameter :: tensor_shape(ndims) = [6]
+    integer, parameter :: dtype = torch_kFloat32
+
+    ! Create a tensor with uninitialised values and check torch_tensor_get_rank can correctly
+    ! identify its rank
+    call torch_tensor_empty(tensor, ndims, tensor_shape, dtype, device_type)
+    @assertEqual(ndims, tensor%get_rank())
+
+  end subroutine test_torch_tensor_get_rank_1D
+
+  ! Unit test for the torch_tensor_get_rank method of a 2D tensor
+  @test
+  subroutine test_torch_tensor_get_rank_2D()
+
+    implicit none
+
+    type(torch_tensor) :: tensor
+    integer, parameter :: ndims = 2
+    integer(kind=c_int64_t), parameter :: tensor_shape(ndims) = [2,3]
+    integer, parameter :: dtype = torch_kFloat32
+
+    ! Create a tensor with uninitialised values and check torch_tensor_get_rank can correctly
+    ! identify its rank
+    call torch_tensor_empty(tensor, ndims, tensor_shape, dtype, device_type)
+    @assertEqual(ndims, tensor%get_rank())
+
+  end subroutine test_torch_tensor_get_rank_2D
+
+  ! Unit test for the torch_tensor_get_rank method of a 3D tensor
+  @test
+  subroutine test_torch_tensor_get_rank_3D()
+
+    implicit none
+
+    type(torch_tensor) :: tensor
+    integer, parameter :: ndims = 3
+    integer(kind=c_int64_t), parameter :: tensor_shape(ndims) = [1,2,3]
+    integer, parameter :: dtype = torch_kFloat32
+
+    ! Create a tensor with uninitialised values and check torch_tensor_get_rank can correctly
+    ! identify its rank
+    call torch_tensor_empty(tensor, ndims, tensor_shape, dtype, device_type)
+    @assertEqual(ndims, tensor%get_rank())
+
+  end subroutine test_torch_tensor_get_rank_3D
+
+  ! Unit test for the torch_tensor_get_shape method of a 1D tensor
+  @test
+  subroutine test_torch_tensor_get_shape_1D()
+
+    implicit none
+
+    type(torch_tensor) :: tensor
+    integer, parameter :: ndims = 1
+    integer(kind=c_int64_t), parameter :: tensor_shape(ndims) = [6]
+    integer, parameter :: dtype = torch_kFloat32
+
+    ! Create a tensor with uninitialised values and check torch_tensor_get_shape can correctly
+    ! identify its shape
+    call torch_tensor_empty(tensor, ndims, tensor_shape, dtype, device_type)
+    @assertTrue(all(tensor_shape == tensor%get_shape()))
+
+  end subroutine test_torch_tensor_get_shape_1D
+
+  ! Unit test for the torch_tensor_get_shape method of a 2D tensor
+  @test
+  subroutine test_torch_tensor_get_shape_2D()
+
+    implicit none
+
+    type(torch_tensor) :: tensor
+    integer, parameter :: ndims = 2
+    integer(kind=c_int64_t), parameter :: tensor_shape(ndims) = [2, 3]
+    integer, parameter :: dtype = torch_kFloat32
+
+    ! Create a tensor with uninitialised values and check torch_tensor_get_shape can correctly
+    ! identify its shape
+    call torch_tensor_empty(tensor, ndims, tensor_shape, dtype, device_type)
+    @assertTrue(all(tensor_shape == tensor%get_shape()))
+
+  end subroutine test_torch_tensor_get_shape_2D
+
+  ! Unit test for the torch_tensor_get_shape method of a 3D tensor
+  @test
+  subroutine test_torch_tensor_get_shape_3D()
+
+    implicit none
+
+    type(torch_tensor) :: tensor
+    integer, parameter :: ndims = 3
+    integer(kind=c_int64_t), parameter :: tensor_shape(ndims) = [1, 2, 3]
+    integer, parameter :: dtype = torch_kFloat32
+
+    ! Create a tensor with uninitialised values and check torch_tensor_get_shape can correctly
+    ! identify its shape
+    call torch_tensor_empty(tensor, ndims, tensor_shape, dtype, device_type)
+    @assertTrue(all(tensor_shape == tensor%get_shape()))
+
+  end subroutine test_torch_tensor_get_shape_3D
+
+  ! Unit test for the torch_tensor_get_dtype function
+  @test
+  subroutine test_torch_tensor_get_dtype()
+
+    implicit none
+
+    type(torch_tensor) :: tensor
+    integer, parameter :: ndims = 1
+    integer(c_int64_t), parameter, dimension(ndims) :: tensor_shape = [1]
+    integer, parameter :: dtype = torch_kFloat32
+    integer, parameter :: expected = torch_kFloat32
+
+    ! Create an empty tensor for 32-bit floats and check that torch_tensor_get_dtype can get the
+    ! device type
+    call torch_tensor_empty(tensor, ndims, tensor_shape, dtype, device_type)
+    @assertEqual(expected, tensor%get_dtype())
+
+  end subroutine test_torch_tensor_get_dtype
+
+  ! Unit test for the torch_tensor_get_device_type function applied to a tensor on the CPU
+  @test
+  subroutine test_torch_tensor_get_device_type()
+
+    implicit none
+
+    type(torch_tensor) :: tensor
+    integer, parameter :: ndims = 1
+    integer(c_int64_t), parameter, dimension(ndims) :: tensor_shape = [1]
+    integer, parameter :: dtype = torch_kFloat32
+    integer, parameter :: expected = torch_kCPU
+
+    ! Create an empty tensor on the CPU with the default device type and check that
+    ! torch_tensor_get_device_type can get the device type
+    call torch_tensor_empty(tensor, ndims, tensor_shape, dtype, device_type)
+    @assertEqual(expected, tensor%get_device_type())
+
+  end subroutine test_torch_tensor_get_device_type
+
+  ! Unit test for the torch_tensor_get_device_index function applied to a tensor on the CPU
+  @test
+  subroutine test_torch_tensor_get_device_index_default()
+
+    implicit none
+
+    type(torch_tensor) :: tensor
+    integer, parameter :: ndims = 1
+    integer(c_int64_t), parameter, dimension(ndims) :: tensor_shape = [1]
+    integer, parameter :: dtype = torch_kFloat32
+    integer, parameter :: expected = -1
+
+    ! Create an empty tensor on the CPU with the default device index and check that
+    ! torch_tensor_get_device_index can get the device index
+    call torch_tensor_empty(tensor, ndims, tensor_shape, dtype, device_type)
+    @assertEqual(expected, tensor%get_device_index())
+
+  end subroutine test_torch_tensor_get_device_index_default
+
+end module test_tensor_interrogation
