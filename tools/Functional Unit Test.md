@@ -8,7 +8,7 @@ Developed by Adrianna Foster & Linnia Hawkins
 ### 1) Clone CTSM 
 `git clone https://github.com/ESCOMP/CTSM.git CTSM`
 
-I suggest cloning to your work directory $WORK or /glade/username/work/
+I suggest cloning to your work directory $WORK or /glade/work/username/
 
 ### 2) Add in some mods
 ```
