@@ -38,3 +38,10 @@ cd testing
 ```
 
 Now you can add in your own model and code in ./ml_example/Example.F90
+
+
+### Updating met forcing 
+You may also want to provide your own input data (e.g., 5 years of meteorology) to test your ml model. 
+To do this you will create a netcdf and point to it in:
+
+CTSM/src/fates/testing/functional_tests.cfg
