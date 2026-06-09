@@ -73,7 +73,7 @@ tuning/
 ├── docs/         architecture · adding_a_sampler · adding_a_component · samplers_overview
 ├── src/tuning/
 │   ├── core/         interfaces · parameters · observations · registry · config
-│   ├── samplers/     random ✅ · latin_hypercube ✅ · history_matching ✅ · eki · mcmc · bayesopt
+│   ├── samplers/     random ✅ · latin_hypercube ✅ · history_matching ✅ · eki ✅ · mcmc · bayesopt
 │   ├── components/   cam · clm
 │   ├── runners/      local ✅ · derecho
 │   └── orchestration/ loop.py
@@ -90,7 +90,9 @@ tuning/
    default; ESEm optional), tested locally. **Remaining:** the real `clm`
    component (`apply`/`compute_metrics`) and `derecho` runner — these need a live
    CESM environment, refactored from `ctsm6_ppe`.
-3. **Phase 3 — breadth.** `eki`, `mcmc`, `bayesopt`; `cam`; the `derecho` runner.
+3. **Phase 3 — breadth.** `eki` ✅ (pure-Python ensemble Kalman inversion,
+   tested locally). Remaining: `mcmc`, `bayesopt`; `cam`; hardening the `derecho`
+   runner.
 
 ## 7. Settled decisions
 
