@@ -37,6 +37,7 @@ Same interface, different answers:
 | `eki` | few | no | Kalman nudge toward obs | Python EKI |
 | `history_matching` | several | yes | keep "not ruled out yet" region | scikit-learn GP (ESEm optional) |
 | `hmc` | 1–2 | yes | sample the posterior (Hamiltonian Monte Carlo) | scikit-learn GP |
+| `nelder_mead` | many (small) | no | reflect/expand/contract a simplex downhill | — |
 
 Emulators are an *internal tool* of some samplers, not a separate concept.
 `history_matching` and `eki` use the runs to pick the next wave directly;
@@ -72,7 +73,7 @@ tuning/
 ├── docs/         architecture · adding_a_sampler · adding_a_component · samplers_overview
 ├── src/tuning/
 │   ├── core/         interfaces · parameters · observations · registry · config
-│   ├── samplers/     random ✅ · latin_hypercube ✅ · history_matching ✅ · eki ✅ · hmc ✅
+│   ├── samplers/     random ✅ · latin_hypercube ✅ · history_matching ✅ · eki ✅ · hmc ✅ · nelder_mead ✅
 │   ├── components/   cam · clm
 │   ├── runners/      local ✅ · derecho
 │   └── orchestration/ loop.py
@@ -89,9 +90,10 @@ tuning/
    default; ESEm optional), tested locally. **Remaining:** the real `clm`
    component (`apply`/`compute_metrics`) and `derecho` runner — these need a live
    CESM environment, refactored from `ctsm6_ppe`.
-3. **Phase 3 — breadth.** `eki` ✅ (pure-Python ensemble Kalman inversion) and
-   `hmc` ✅ (Hamiltonian Monte Carlo on a GP emulator), both tested locally.
-   Remaining: the `cam` component; hardening the `derecho` runner.
+3. **Phase 3 — breadth.** `eki` ✅ (ensemble Kalman inversion), `hmc` ✅
+   (Hamiltonian Monte Carlo on a GP emulator), and `nelder_mead` ✅ (simplex
+   optimizer), all pure-Python and tested locally. Remaining: the `cam`
+   component; hardening the `derecho` runner.
 
 ## 7. Settled decisions
 

@@ -12,9 +12,9 @@ A *sampler* answers it. The rest is plumbing.
 ```
 
 - **Sampler** — how to choose the next wave: `random`, `latin_hypercube`,
-  `eki`, `history_matching`, `hmc`. Some run one wave (random, LHC), others
-  many (eki, history matching, hmc). Some build an emulator internally —
-  that's their business, not the loop's.
+  `eki`, `history_matching`, `hmc`, `nelder_mead`. Some run one wave (random,
+  LHC), others many (eki, history matching, hmc, nelder_mead). Some build an
+  emulator internally — that's their business, not the loop's.
 - **Component** — the model: `cam`, `clm`. Knows its parameters and diagnostics.
 - **Runner** — where it runs: `local` (tests) or `derecho` (HPC).
 

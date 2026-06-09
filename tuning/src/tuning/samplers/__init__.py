@@ -3,5 +3,6 @@ from . import (  # noqa: F401  (import so they self-register)
     history_matching,
     hmc,
     latin_hypercube,
+    nelder_mead,
     random,
 )

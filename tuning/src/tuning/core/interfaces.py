@@ -17,7 +17,7 @@ one without touching the others:
     ...repeat until sampler.is_done(), then sampler.result()
 
 - Sampler    = how to choose params   (random, latin_hypercube, eki,
-                                        history_matching, hmc)
+                                        history_matching, hmc, nelder_mead)
 - Component  = the model               (cam, clm) — its params and diagnostics
 - Runner     = where it runs            (local for tests, derecho for real runs)
 """
