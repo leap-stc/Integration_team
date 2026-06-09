@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tuning"
+version = "0.0.1"
+description = "Mix-and-match calibration tools for CESM"
+requires-python = ">=3.10"
+dependencies = ["numpy", "pyyaml"]
+
+# Optional extras, installed only when needed:
+#   pip install -e "tuning/[emulator]"
+[project.optional-dependencies]
+emulator = ["scikit-learn"]   # default GP emulator for history_matching
+esem = ["esem"]               # optional alternative emulator engine
+
+[tool.setuptools.packages.find]
+where = ["src"]

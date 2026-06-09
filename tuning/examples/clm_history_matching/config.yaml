@@ -1,0 +1,6 @@
+# Example experiment: calibrate CLM with history matching on Derecho.
+# (Uses stub plugins for now — illustrative until Phase 2/3.)
+component: clm
+sampler: history_matching
+runner: derecho
+n: 100              # ensemble size per wave
