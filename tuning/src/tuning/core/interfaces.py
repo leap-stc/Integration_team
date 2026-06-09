@@ -17,7 +17,7 @@ one without touching the others:
     ...repeat until sampler.is_done(), then sampler.result()
 
 - Sampler    = how to choose params   (random, latin_hypercube, eki,
-                                        history_matching, mcmc, bayesopt)
+                                        history_matching, hmc)
 - Component  = the model               (cam, clm) — its params and diagnostics
 - Runner     = where it runs            (local for tests, derecho for real runs)
 """
@@ -36,7 +36,7 @@ class Sampler(ABC):
     """Chooses which parameter sets to run next.
 
     One wave at a time. Some samplers run a single wave (random, latin
-    hypercube); others run several (eki, history matching, mcmc). Some build an
+    hypercube); others run several (eki, history matching, hmc). Some build an
     emulator internally — that is their business, not the loop's.
     """
 

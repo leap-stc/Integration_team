@@ -24,7 +24,7 @@ components and the `derecho` runner are stubs (need a real model environment).
 
 | Slot | Options |
 |---|---|
-| Samplers | `random` ✅ · `latin_hypercube` ✅ · `history_matching` ✅ · `eki` ✅ · `mcmc` · `bayesopt` |
+| Samplers | `random` ✅ · `latin_hypercube` ✅ · `history_matching` ✅ · `eki` ✅ · `hmc` ✅ |
 | Components | `cam` · `clm` |
 | Runners | `local` ✅ · `derecho` |
 

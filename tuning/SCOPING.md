@@ -36,12 +36,11 @@ Same interface, different answers:
 | `latin_hypercube` | 1 | no | spread evenly across ranges | — |
 | `eki` | few | no | Kalman nudge toward obs | Python EKI |
 | `history_matching` | several | yes | keep "not ruled out yet" region | scikit-learn GP (ESEm optional) |
-| `mcmc` / HMC | several | yes | sample the posterior | ESEm |
-| `bayesopt` | many | yes | next point most likely to improve | ESEm (GP) |
+| `hmc` | 1–2 | yes | sample the posterior (Hamiltonian Monte Carlo) | scikit-learn GP |
 
 Emulators are an *internal tool* of some samplers, not a separate concept.
 `history_matching` and `eki` use the runs to pick the next wave directly;
-`mcmc`/`bayesopt` build an emulator and sample it, after which you can draw N
+`hmc` builds an emulator and samples its posterior, after which you can draw N
 sets from the posterior and run one more wave — which is just another `ask`.
 
 ## 3. The three contracts (`core/interfaces.py`)
@@ -73,7 +72,7 @@ tuning/
 ├── docs/         architecture · adding_a_sampler · adding_a_component · samplers_overview
 ├── src/tuning/
 │   ├── core/         interfaces · parameters · observations · registry · config
-│   ├── samplers/     random ✅ · latin_hypercube ✅ · history_matching ✅ · eki ✅ · mcmc · bayesopt
+│   ├── samplers/     random ✅ · latin_hypercube ✅ · history_matching ✅ · eki ✅ · hmc ✅
 │   ├── components/   cam · clm
 │   ├── runners/      local ✅ · derecho
 │   └── orchestration/ loop.py
@@ -90,9 +89,9 @@ tuning/
    default; ESEm optional), tested locally. **Remaining:** the real `clm`
    component (`apply`/`compute_metrics`) and `derecho` runner — these need a live
    CESM environment, refactored from `ctsm6_ppe`.
-3. **Phase 3 — breadth.** `eki` ✅ (pure-Python ensemble Kalman inversion,
-   tested locally). Remaining: `mcmc`, `bayesopt`; `cam`; hardening the `derecho`
-   runner.
+3. **Phase 3 — breadth.** `eki` ✅ (pure-Python ensemble Kalman inversion) and
+   `hmc` ✅ (Hamiltonian Monte Carlo on a GP emulator), both tested locally.
+   Remaining: the `cam` component; hardening the `derecho` runner.
 
 ## 7. Settled decisions
 
