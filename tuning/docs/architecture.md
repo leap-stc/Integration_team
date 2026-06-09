@@ -20,6 +20,14 @@ A *sampler* answers it. The rest is plumbing.
 
 A "wave" is one batch of forward-model runs.
 
+## Two ways to run
+
+- **`run_calibration` (synchronous)** — runs every wave in one process. For
+  runners that finish immediately, like `local`. This is what the tests use.
+- **`Campaign.step` (wave by wave)** — submits one wave, saves state to a file,
+  and exits. You re-run it after each wave finishes on HPC. For `derecho`, where
+  a wave is a batch of long jobs running on its own schedule.
+
 | File | What |
 |---|---|
 | `core/interfaces.py` | the three contracts (start here) |

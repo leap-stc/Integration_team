@@ -1,7 +1,11 @@
-"""The calibration loop — the heart of the package.
+"""The calibration loop for runners that finish immediately (e.g. `local`).
 
-One wave at a time: the sampler proposes parameter sets, the runner runs them,
-the component scores them, the sampler learns. Repeat until the sampler is done.
+Runs every wave in one process: the sampler proposes parameter sets, the runner
+runs them, the component scores them, the sampler learns. Repeat until done.
+
+For long HPC runs where each wave runs on its own schedule, use
+orchestration/campaign.py instead — it submits one wave per call and you
+re-run after each wave finishes.
 """
 
 from ..core.interfaces import Component, Runner, Sampler
