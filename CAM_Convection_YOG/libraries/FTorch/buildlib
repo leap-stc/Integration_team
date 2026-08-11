@@ -82,7 +82,11 @@ def buildlib(bldroot, installpath, case):
     else:
         use_ftorch = "OFF"
 
-    cmake_opts = '"-DCMAKE_PREFIX_PATH={} -DTORCH_LIBRARY={} -DUSE_FTORCH={} "'.format(torch_dir, torch_library, use_ftorch)
+    # Override the Catamount cross-compile target CIME sets by default: it disables
+    # CMake's shared-library support, which breaks find_package(Torch)'s protobuf/
+    # utf8_range IMPORTED SHARED targets under newer libtorch builds. Placed after
+    # the base -DCMAKE_SYSTEM_NAME=Catamount on the cmake command line so this wins.
+    cmake_opts = '"-DCMAKE_PREFIX_PATH={} -DTORCH_LIBRARY={} -DUSE_FTORCH={} -DCMAKE_SYSTEM_NAME=Linux "'.format(torch_dir, torch_library, use_ftorch)
 
     gmake_vars = (
         "CASEROOT={caseroot} COMP_NAME=FTorch "
