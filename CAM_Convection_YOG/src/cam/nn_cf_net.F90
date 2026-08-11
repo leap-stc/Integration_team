@@ -125,8 +125,11 @@ contains
         deallocate(out_data)
 
         ! Clean up tensors
-        call torch_delete(in_tensor)
-        call torch_delete(out_tensor)
+        !call torch_delete(in_tensor)
+        !call torch_delete(out_tensor)
+
+        call torch_delete(in_tensor(1))
+        call torch_delete(out_tensor(1))
     end subroutine net_forward
 
     subroutine nn_cf_net_init(nn_filename, metadata_filename, n_inputs, n_outputs, nrf, model_ftorch, iulog, errstring)
@@ -223,10 +226,15 @@ contains
         n_lev = nrf
 
         ! Allocate and set sizes of the feature groups
+        ! All 5 output groups (t_rad_rest_tend, t_flux_adv, q_flux_adv,
+        ! q_tend_auto, q_sed_flux) are full nrf size for this model --
+        ! unlike the older reference model, t_flux_adv/q_flux_adv are NOT
+        ! reduced by 1 here (the surface-boundary zero is applied
+        ! explicitly in nn_convection_flux.F90 instead). n_features_out=5
+        ! groups x n_lev=49 = 245 = N_out, confirmed against the metadata file.
         if (allocated(feature_out_sizes)) deallocate(feature_out_sizes)
         allocate(feature_out_sizes(n_features_out))
-        feature_out_sizes(:)   = n_lev
-        feature_out_sizes(2:3) = n_lev-1
+        feature_out_sizes(:) = n_lev
 
     end subroutine nn_cf_net_init
 
@@ -261,6 +269,7 @@ contains
 
         if(err_status /= nf90_noerr) then
              write(*, *) trim(nf90_strerror(err_status))
+             stop 'nn_cf_net_mod: fatal netCDF error, aborting'
         end if
 
     end subroutine check

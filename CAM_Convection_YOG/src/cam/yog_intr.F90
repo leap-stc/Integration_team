@@ -17,7 +17,7 @@ module yog_intr
                            nn_convection_flux_CAM,                   &
                            nn_convection_flux_CAM_finalize
 
-   use physconst,    only: cpair, pi 
+   use physconst,    only: cpair, pi
    use ppgrid,       only: pver, pcols, pverp, begchunk, endchunk
    use cam_abortutils,   only: endrun
    use perf_mod
@@ -27,11 +27,13 @@ module yog_intr
    implicit none
    private
    save
-   character(len=256),     save :: yog_nn_weights  = ''    ! location of weights for the YOG NN, set in namelist
-   character(len=256),     save :: yog_nn_scale    = ''    ! location of dimensions and scaling parameters  set in namelist
+   character(len=136),     save :: yog_nn_weights  = ''    ! location of weights for the YOG NN, set in namelist
+   character(len=136),     save :: yog_nn_scale    = ''    ! location of dimensions and scaling parameters  set in namelist
    character(len=136),     save :: SAM_sounding    = ''    ! location of SAM sounding profile for the YOG NN, set in namelist
-   character(len=64 ),     save :: yog_device      = 'cpu' ! optional
-   integer,                save :: yog_safety_level = 2    ! optional
+   real(r8),               save :: yog_lat_max     = 30._r8 ! restrict YOG to |lat| <= yog_lat_max degrees
+                                                              ! (NN was trained on tropical SAM data; applying
+                                                              ! it at high latitudes/cold columns produced an
+                                                              ! out-of-distribution blow-up that crashed CLUBB)
 
 
    ! Public methods
@@ -51,7 +53,7 @@ contains
 
 subroutine yog_readnl(nlfile)
 
-   use spmd_utils,      only: mpi_character, masterprocid, mpicom
+   use spmd_utils,      only: mpi_character, mpi_real8, masterprocid, mpicom
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
 
@@ -61,7 +63,7 @@ subroutine yog_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'yog_readnl'
 
-   namelist /yog_params_nl/ yog_nn_weights,  yog_nn_scale, SAM_sounding
+   namelist /yog_params_nl/ yog_nn_weights,  yog_nn_scale, SAM_sounding, yog_lat_max
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -86,6 +88,8 @@ subroutine yog_readnl(nlfile)
    if (ierr /= 0) call endrun("yog_readnl: FATAL: mpi_bcast: yog_nn_scale")
    call mpi_bcast(SAM_sounding, len(SAM_sounding), mpi_character, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("yog_readnl: FATAL: mpi_bcast: SAM_sounding")
+   call mpi_bcast(yog_lat_max, 1, mpi_real8, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("yog_readnl: FATAL: mpi_bcast: yog_lat_max")
 
 end subroutine yog_readnl
 
@@ -116,6 +120,16 @@ subroutine yog_init()
   call addfld ('PREC_YOG',   horiz_only ,  'A', 'm/s','Surface preciptation - Yuval-OGorman convection')
   call addfld ('YOGDNUMLIQ', (/ 'lev' /),  'A', 'N/s','Cloud liq number conc. tendency - Yuval-OGorman convection')
   call addfld ('YOGDNUMICE', (/ 'lev' /),  'A', 'N/s','Cloud ice number conc. tendency - Yuval-OGorman convection')
+
+  call addfld ('YOG_DQ_ADV  ',   (/ 'lev' /),  'A', '(kg/kg)/kg/s','Q subg. vert. adv. flux conv. - YOG ')
+  call addfld ('YOG_DQ_AUTO ',   (/ 'lev' /),  'A', '(kg/kg)/kg/s','Q cloud microphysics tend. - YOG')
+  call addfld ('YOG_DQ_SED  ',   (/ 'lev' /),  'A', '(kg/kg)/kg/s','Q cloud ice sediment. flux conv. - YOG')
+  call addfld ('YOG_DT_ADV  ',   (/ 'lev' /),  'A', 'J/kg/s','H subg. vert. adv. flux conv. - YOG')
+  call addfld ('YOG_DT_AUTO ',   (/ 'lev' /),  'A', 'J/kg/s','H cloud microphysics tend. - YOG')
+  call addfld ('YOG_DT_SED  ',   (/ 'lev' /),  'A', 'J/kg/s','H cloud ice sediment. flux conv. - YOG')
+  call addfld ('YOG_DT_RAD  ',   (/ 'lev' /),  'A', 'J/kg/s','H radiative & phase change tend. - YOG')
+  call addfld ('YOG_DT_ADVFLX  ',   (/ 'lev' /),  'A', 'J/m2/s','H subg. vert. adv. flux - YOG')
+
   if (masterproc) then
      write(iulog,*)'YOG output fields added to buffer'
   end if
@@ -131,6 +145,15 @@ subroutine yog_init()
      call add_default('PREC_YOG', history_budget_histfile_num, ' ')
      call add_default('YOGDNUMLIQ', history_budget_histfile_num, ' ')
      call add_default('YOGDNUMICE', history_budget_histfile_num, ' ')
+
+     call add_default('YOG_DQ_ADV ' , history_budget_histfile_num, ' ')
+     call add_default('YOG_DQ_AUTO' , history_budget_histfile_num, ' ')
+     call add_default('YOG_DQ_SED ' , history_budget_histfile_num, ' ')
+     call add_default('YOG_DT_ADV ' , history_budget_histfile_num, ' ')
+     call add_default('YOG_DT_AUTO' , history_budget_histfile_num, ' ')
+     call add_default('YOG_DT_SED ' , history_budget_histfile_num, ' ')
+     call add_default('YOG_DT_RAD ' , history_budget_histfile_num, ' ')
+     call add_default('YOG_DT_ADVFLX ' , history_budget_histfile_num, ' ')
   end if
 
   call nn_convection_flux_CAM_init(yog_nn_weights, yog_nn_scale, SAM_sounding)
@@ -138,6 +161,7 @@ subroutine yog_init()
      write(iulog,*)'yog_nn_weights at: ', yog_nn_weights
      write(iulog,*)'yog_nn_scale at: ', yog_nn_scale
      write(iulog,*)'SAM_sounding at: ', SAM_sounding
+     write(iulog,*)'yog_lat_max at: ', yog_lat_max
      write(iulog,*)'YOG scheme initialised'
   endif
 
@@ -159,7 +183,7 @@ end subroutine yog_final
 
 !=========================================================================================
 
-subroutine yog_tend(ztodt, state, ptend, pbuf)
+subroutine yog_tend(ztodt, state, ptend, pbuf, landfrac)
 
 !----------------------------------------
 ! Purpose:  tendency calculation for YOG scheme
@@ -180,11 +204,11 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
    type(physics_buffer_desc), pointer       :: pbuf(:)
 
    real(r8), intent(in) :: ztodt                       ! 2 delta t (model time increment)
+   real(r8), intent(in) :: landfrac(pcols)             ! Land fraction
 
    ! Local variables
 
    integer :: i, k
-   integer :: nstep
    integer :: ixcldice, ixcldliq      ! constituent indices for cloud liquid and ice water.
    integer :: ixnumice, ixnumliq      ! constituent indices for cloud liquid and ice number concentration.
    integer :: lchnk                   ! chunk identifier
@@ -192,6 +216,10 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
 
    real(r8) :: ftem(pcols,pver)       ! Temporary workspace for outfld variables
    real(r8) :: num_tem                ! Temporary holder for number tendency
+
+   real(r8) :: q_delta_adv(pcols,pver), q_delta_auto(pcols,pver), q_delta_sed(pcols,pver), &
+               t_delta_adv(pcols,pver), t_delta_auto(pcols,pver), t_delta_sed(pcols,pver), &
+               t_delta_rad(pcols,pver), t_flux_adv(pcols,pver)
 
    logical  :: lq(pcnst)
 
@@ -217,12 +245,44 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
    call nn_convection_flux_CAM(state%pmid(:,pver:1:-1), state%pint(:,pverp:1:-1), state%ps, &
                                state%t(:,pver:1:-1), state%q(:,pver:1:-1,1), &
                                state%q(:,pver:1:-1,ixcldliq), state%q(:,pver:1:-1,ixcldice), &
+                               state%phis, state%zm(:,pver:1:-1), &
+                               landfrac, state%ps, &
                                cpair, &
                                ztodt, &
                                ncol, &
                                yog_precsfc, &
                                ptend%q(:,pver:1:-1,ixcldice), ptend%q(:,pver:1:-1,1), &
-                               ptend%q(:,pver:1:-1,ixcldliq), ptend%s(:,pver:1:-1))
+                               ptend%q(:,pver:1:-1,ixcldliq), ptend%s(:,pver:1:-1), &
+                               q_delta_adv(:,pver:1:-1), q_delta_auto(:,pver:1:-1), &
+                               q_delta_sed(:,pver:1:-1), t_delta_adv(:,pver:1:-1), &
+                               t_delta_auto(:,pver:1:-1), t_delta_sed(:,pver:1:-1), &
+                               t_delta_rad(:,pver:1:-1), t_flux_adv(:,pver:1:-1))
+
+
+   ! Restrict YOG to the tropics: the NN was trained on tropical SAM data,
+   ! and applying it at high latitudes/cold columns produced an
+   ! out-of-distribution tendency blow-up that crashed CLUBB (see job
+   ! 6514906, nstep 1254, lat~68N: YOGDT reached 0.55 K/s). ZM continues
+   ! to handle deep convection everywhere regardless of this mask, since
+   ! YOG is an additive correction applied after convect_deep_tend.
+   do i = 1, ncol
+      if (abs(state%lat(i)) * 180._r8/pi > yog_lat_max) then
+         ptend%s(i,:pver)          = 0._r8
+         ptend%q(i,:pver,1)        = 0._r8
+         ptend%q(i,:pver,ixcldice) = 0._r8
+         ptend%q(i,:pver,ixcldliq) = 0._r8
+         yog_precsfc(i)            = 0._r8
+         q_delta_adv(i,:pver)      = 0._r8
+         q_delta_auto(i,:pver)     = 0._r8
+         q_delta_sed(i,:pver)      = 0._r8
+         t_delta_adv(i,:pver)      = 0._r8
+         t_delta_auto(i,:pver)     = 0._r8
+         t_delta_sed(i,:pver)      = 0._r8
+         t_delta_rad(i,:pver)      = 0._r8
+         t_flux_adv(i,:pver)       = 0._r8
+      end if
+   end do
+
 
    ftem(:ncol,:pver) = ptend%s(:ncol,:pver)/cpair
    call outfld('YOGDT   ',ftem               ,pcols   ,lchnk   )
@@ -231,38 +291,49 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
    call outfld('YOGDLIQ ',ptend%q(1,1,ixcldliq) ,pcols   ,lchnk   )
    call outfld('PREC_YOG',yog_precsfc ,pcols   ,lchnk   )
 
+   call outfld('YOG_DQ_ADV   ',q_delta_adv ,pcols   ,lchnk   )
+   call outfld('YOG_DQ_AUTO  ',q_delta_auto,pcols   ,lchnk   )
+   call outfld('YOG_DQ_SED   ',q_delta_sed ,pcols   ,lchnk   )
+   call outfld('YOG_DT_ADV   ',t_delta_adv ,pcols   ,lchnk   )
+   call outfld('YOG_DT_AUTO  ',t_delta_auto,pcols   ,lchnk   )
+   call outfld('YOG_DT_SED   ',t_delta_sed ,pcols   ,lchnk   )
+   call outfld('YOG_DT_RAD   ',t_delta_rad ,pcols   ,lchnk   )
+   call outfld('YOG_DT_ADVFLX   ', t_flux_adv,pcols   ,lchnk   )
+
+
    ! Add prec_yog to prec_dp for passing to physpkg and coupler
    ! Note that prec_dp is initialised in the physics buffer and zeroed for deep_scheme='off'
    prec(:ncol) = prec(:ncol) + yog_precsfc(:ncol)
 
-   !======== NUMBER CONCENTRATION IS CURRENTLY NOT SET AS IT DETRIMENTALLY IMPACTS THE 
-   !         RESULTS HOWEVER, THE CODE FOR THE CALCULATION IS KEPT BELOW, COMMENTED OUT
-   ! ! Update the number concentration tendencies for liquid and ice species for all cells
-   ! ! Match calculations in the `clubb_tend_cam()` subroutine
-   ! ! YOG could produce negative number tendency, so we ensure it doesn't reduce total
-   ! ! number concentration below 0.0 - note that a check on this is also made in physics_update()
-   ! call cnst_get_ind('NUMLIQ', ixnumliq)
-   ! call cnst_get_ind('NUMICE', ixnumice)
-   ! do k = 1, pver
-   ! do i = 1, ncol
-   !    ! Liquid
-   !    num_tem = 3. * ptend%q(i,k,ixcldliq) / (4.0*3.14* 8.0e-6**3*997.0)
-   !    if (num_tem .lt. 0) then
-   !       ptend%q(i,k,ixnumliq) = - min(-num_tem, state%q(i,k,ixnumliq)/ztodt)
-   !    else
-   !       ptend%q(i,k,ixnumliq) = num_tem
-   !    endif
-   !    ! Ice
-   !    num_tem = 3. * ptend%q(i,k,ixcldice) / (4.0*3.14*25.0e-6**3*500.0)
-   !    if (num_tem .lt. 0) then
-   !       ptend%q(i,k,ixnumice) = - min(-num_tem, state%q(i,k,ixnumice)/ztodt)
-   !    else
-   !       ptend%q(i,k,ixnumice) = num_tem
-   !    endif
-   ! end do
-   ! end do
-   ! call outfld('YOGDNUMLIQ ',ptend%q(1,1,ixnumliq) ,pcols   ,lchnk   )
-   ! call outfld('YOGDNUMICE ',ptend%q(1,1,ixnumice) ,pcols   ,lchnk   )
+
+   ! Update the number concentration tendencies for liquid and ice species for all cells
+   ! Match calculations in the `clubb_tend_cam()` subroutine
+   ! YOG could produce negative number tendency, so we ensure it doesn't reduce total
+   ! number concentration below 0.0 - note that a check on this is also made in physics_update()
+   call cnst_get_ind('NUMLIQ', ixnumliq)
+   call cnst_get_ind('NUMICE', ixnumice)
+   do k = 1, pver
+   do i = 1, ncol
+      ! Liquid
+      num_tem = 3. * ptend%q(i,k,ixcldliq) / (4.0*3.14* 8.0e-6**3*997.0)
+      if (num_tem .lt. 0) then
+         ptend%q(i,k,ixnumliq) = - min(-num_tem, state%q(i,k,ixnumliq)/ztodt)
+      else
+         ptend%q(i,k,ixnumliq) = num_tem
+      endif
+      ! Ice
+      num_tem = 3. * ptend%q(i,k,ixcldice) / (4.0*3.14*25.0e-6**3*500.0) * 0.2
+      if (num_tem .lt. 0) then
+         ptend%q(i,k,ixnumice) = - min(-num_tem, state%q(i,k,ixnumice)/ztodt)
+      else
+         ptend%q(i,k,ixnumice) = num_tem
+      endif
+   end do
+   end do
+
+   call outfld('YOGDNUMLIQ ',ptend%q(1,1,ixnumliq) ,pcols   ,lchnk   )
+   call outfld('YOGDNUMICE ',ptend%q(1,1,ixnumice) ,pcols   ,lchnk   )
+
 
 end subroutine yog_tend
 
